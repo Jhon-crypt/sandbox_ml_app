@@ -63,6 +63,70 @@ function showError(message) {
   }
 }
 
+function openRDownloadPage() {
+  const platform = process.platform;
+  
+  if (platform === 'darwin') {
+    // Use our custom installer script for macOS
+    const installerPath = path.join(process.resourcesPath, 'install_r_mac.sh');
+    
+    // Make sure it's executable
+    try {
+      fs.chmodSync(installerPath, '755');
+      
+      // Launch the installer script
+      const installer = spawn(installerPath, [], {
+        detached: true,
+        stdio: 'ignore'
+      });
+      
+      installer.unref();
+      console.log("Launched R installer script");
+      return;
+    } catch (err) {
+      console.error("Error launching R installer script:", err);
+      // Fall back to opening the website if script fails
+    }
+  }
+  
+  // Default fallback to opening the website
+  let downloadUrl = 'https://cran.r-project.org/';
+  
+  if (platform === 'darwin') {
+    downloadUrl = 'https://cran.r-project.org/bin/macosx/';
+  } else if (platform === 'win32') {
+    downloadUrl = 'https://cran.r-project.org/bin/windows/base/';
+  } else if (platform === 'linux') {
+    downloadUrl = 'https://cran.r-project.org/bin/linux/';
+  }
+  
+  require('electron').shell.openExternal(downloadUrl);
+}
+
+async function showRInstallDialog() {
+  return new Promise((resolve) => {
+    const dialogOptions = {
+      type: 'question',
+      buttons: ['Download R', 'Quit'],
+      defaultId: 0,
+      title: 'SandboxML - R Installation Required',
+      message: 'R is required but not found on your system',
+      detail: 'SandboxML requires R to run. Would you like to open the R download page in your browser?'
+    };
+    
+    dialog.showMessageBox(null, dialogOptions).then(result => {
+      if (result.response === 0) {
+        // Download R button clicked
+        openRDownloadPage();
+        resolve(false); // Return false as R isn't installed yet
+      } else {
+        // Quit button clicked
+        resolve(false);
+      }
+    });
+  });
+}
+
 async function checkAndInstallDependencies() {
   return new Promise((resolve, reject) => {
     // Skip in development mode
@@ -225,8 +289,8 @@ async function checkAndInstallDependencies() {
       
     } catch (err) {
       console.error("Error checking R installation:", err);
-      showError(`R is not installed or not working properly. Please install R from https://cran.r-project.org/ and try again.`);
-      resolve(false);
+      // Instead of showing an error directly, show a dialog offering to download R
+      resolve('no-r'); // Special response to indicate R is not installed
     }
   });
 }
@@ -353,7 +417,12 @@ app.whenReady().then(async () => {
   // Check and install dependencies first
   const dependenciesOk = await checkAndInstallDependencies();
   
-  if (dependenciesOk && startRProcess()) {
+  if (dependenciesOk === 'no-r') {
+    // R is not installed, show dialog offering to download
+    console.log("R is not installed. Showing download dialog...");
+    await showRInstallDialog();
+    app.quit();
+  } else if (dependenciesOk && startRProcess()) {
     createWindow();
   } else if (!dependenciesOk) {
     showError("Failed to install dependencies. Please install manually using the instructions in the README.");

@@ -50,7 +50,8 @@
       },
       "run-r.sh",
       "run-r.bat",
-      "install_dependencies.sh"
+      "install_dependencies.sh",
+      "install_r_mac.sh"
     ],
     "afterSign": "build/notarize.js"
   }
