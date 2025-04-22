@@ -1,5 +1,5 @@
 const { app, BrowserWindow, dialog } = require('electron');
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
@@ -7,6 +7,7 @@ const fs = require('fs');
 let rProcess = null;
 let mainWindow = null;
 let serverCheckTimeout = null;
+let installInProgress = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -60,6 +61,174 @@ function showError(message) {
     dialog.showErrorBox('SandboxML Error', message);
     app.quit();
   }
+}
+
+async function checkAndInstallDependencies() {
+  return new Promise((resolve, reject) => {
+    // Skip in development mode
+    if (!app.isPackaged) {
+      console.log("Development mode: skipping automatic dependency installation");
+      return resolve(true);
+    }
+    
+    console.log("Checking R installation and dependencies...");
+    
+    // Determine the path to the installer script
+    const basePath = process.resourcesPath;
+    const installerPath = path.join(basePath, 'install_dependencies.sh');
+    
+    // Check if installer exists
+    if (!fs.existsSync(installerPath)) {
+      console.error(`Installer script not found at ${installerPath}`);
+      return resolve(false);
+    }
+    
+    // Make sure it's executable
+    try {
+      fs.chmodSync(installerPath, '755');
+    } catch (err) {
+      console.error("Error making installer script executable:", err);
+    }
+    
+    // Check if R is installed
+    try {
+      execSync('which R');
+      console.log("R is installed.");
+      
+      // Run a simple R command to check if it works
+      execSync('R --version');
+      console.log("R is working.");
+      
+      // Check if dependencies are installed
+      const checkScript = `
+      required_packages <- c(
+        "shiny", "cluster", "factoextra", "dplyr", "shinyFiles", "ggplot2", "fs",
+        "DT", "markdown", "naniar", "missRanger", "readr", "gridExtra", "rlang",
+        "randomForest", "caret", "pROC", "shinyjs"
+      )
+      installed <- installed.packages()[, "Package"]
+      missing <- required_packages[!required_packages %in% installed]
+      cat(length(missing))
+      `;
+      
+      const output = execSync(`R --vanilla -e "${checkScript}"`).toString().trim();
+      const missingCount = parseInt(output);
+      
+      if (missingCount === 0) {
+        console.log("All dependencies are already installed.");
+        return resolve(true);
+      }
+      
+      console.log(`Found ${missingCount} missing dependencies. Installing...`);
+      
+      // Set the install dialog
+      installInProgress = true;
+      const installWindow = new BrowserWindow({
+        width: 500,
+        height: 300,
+        show: true,
+        alwaysOnTop: true,
+        webPreferences: {
+          nodeIntegration: true,
+          contextIsolation: false,
+        }
+      });
+      
+      // Create a simple HTML progress page
+      const progressHtml = `
+        <html>
+        <head>
+          <style>
+            body {
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+              margin: 20px;
+              text-align: center;
+              background-color: #f5f5f7;
+              color: #1d1d1f;
+            }
+            h2 {
+              margin-top: 30px;
+              font-weight: 500;
+            }
+            .loader {
+              margin: 40px auto;
+              border: 5px solid #f3f3f3;
+              border-radius: 50%;
+              border-top: 5px solid #0066cc;
+              width: 50px;
+              height: 50px;
+              animation: spin 1s linear infinite;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            p {
+              margin-top: 30px;
+              font-size: 14px;
+              color: #666;
+            }
+          </style>
+        </head>
+        <body>
+          <h2>Installing SandboxML Dependencies</h2>
+          <div class="loader"></div>
+          <p>This may take a few minutes.<br>The application will start automatically when installation completes.</p>
+        </body>
+        </html>
+      `;
+      
+      const progressPath = path.join(app.getPath('temp'), 'progress.html');
+      fs.writeFileSync(progressPath, progressHtml);
+      installWindow.loadFile(progressPath);
+      
+      // Run the installer
+      const installer = spawn(installerPath, [], {
+        shell: true,
+        stdio: 'pipe'
+      });
+      
+      let stdout = '';
+      let stderr = '';
+      
+      installer.stdout.on('data', (data) => {
+        stdout += data.toString();
+        console.log(`INSTALLER: ${data.toString().trim()}`);
+      });
+      
+      installer.stderr.on('data', (data) => {
+        stderr += data.toString();
+        console.error(`INSTALLER ERROR: ${data.toString().trim()}`);
+      });
+      
+      installer.on('error', (err) => {
+        console.error("Error running installer:", err);
+        installInProgress = false;
+        installWindow.close();
+        reject(err);
+      });
+      
+      installer.on('exit', (code) => {
+        installInProgress = false;
+        installWindow.close();
+        
+        if (code === 0) {
+          console.log("Dependencies installed successfully.");
+          resolve(true);
+        } else {
+          console.error(`Installer exited with code ${code}`);
+          const errorMsg = stderr || stdout || "Unknown error during installation";
+          showError(`Failed to install dependencies. Please install manually using the instructions in the README.\n\nError: ${errorMsg}`);
+          resolve(false);
+        }
+      });
+      
+    } catch (err) {
+      console.error("Error checking R installation:", err);
+      showError(`R is not installed or not working properly. Please install R from https://cran.r-project.org/ and try again.`);
+      resolve(false);
+    }
+  });
 }
 
 function startRProcess() {
@@ -180,9 +349,15 @@ function stopRProcess() {
   }
 }
 
-app.whenReady().then(() => {
-  if (startRProcess()) {
+app.whenReady().then(async () => {
+  // Check and install dependencies first
+  const dependenciesOk = await checkAndInstallDependencies();
+  
+  if (dependenciesOk && startRProcess()) {
     createWindow();
+  } else if (!dependenciesOk) {
+    showError("Failed to install dependencies. Please install manually using the instructions in the README.");
+    app.quit();
   } else {
     showError("Failed to start R process. The application will now quit.");
     app.quit();
@@ -214,7 +389,7 @@ process.on('SIGINT', () => {
 
 // Handle macOS app activation
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  if (BrowserWindow.getAllWindows().length === 0 && !installInProgress) {
     createWindow();
   }
 });
