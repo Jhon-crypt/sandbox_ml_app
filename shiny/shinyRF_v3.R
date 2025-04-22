@@ -332,10 +332,9 @@ rf_server <- function(input, output, session) {
     })
 
     output$rf_plot <- renderPlot({
-      req(predictions(), observations(), rocplot())  
-      
       if (input$rf_type == "Regression") {
-
+        req(predictions(), observations())
+        
         pred <- predictions()$pred
         obs <- observations()
        
@@ -346,10 +345,9 @@ rf_server <- function(input, output, session) {
         
         abline(lm(pred ~ obs), col = "red", lwd = 2)
       } else {
-        
-        plot(rocplot(), main = "Cross-Validated ROC",col="blue",lwd=3)
+        req(rocplot())
+        plot(rocplot(), main = "Cross-Validated ROC", col="blue", lwd=3)
       }
-      
     })
     
 
