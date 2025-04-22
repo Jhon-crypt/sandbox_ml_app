@@ -34,14 +34,7 @@
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
-      "extraFiles": [{
-        "from": "/Library/Frameworks/R.framework",
-        "to": "Frameworks/R.framework",
-        "filter": [
-          "**/*"
-        ]
-      }]
+      "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "files": [
       "**/*",
@@ -56,7 +49,8 @@
         "to": "shiny"
       },
       "run-r.sh",
-      "run-r.bat"
+      "run-r.bat",
+      "install_dependencies.sh"
     ],
     "afterSign": "build/notarize.js"
   }

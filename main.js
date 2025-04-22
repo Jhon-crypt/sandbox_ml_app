@@ -87,6 +87,16 @@ function startRProcess() {
     }
   }
   
+  // Check for R installation
+  if (process.platform === 'darwin') {
+    const rFrameworkPath = '/Library/Frameworks/R.framework';
+    if (!fs.existsSync(rFrameworkPath)) {
+      console.error('R Framework not found on the system');
+      showError('R is not installed on this system. Please install R from https://cran.r-project.org/bin/macosx/');
+      return false;
+    }
+  }
+  
   // Spawn the R process
   try {
     rProcess = spawn(scriptPath, [], {
@@ -103,7 +113,24 @@ function startRProcess() {
     rProcess.on('exit', (code) => {
       console.log(`R process exited with code ${code}`);
       if (code !== 0 && mainWindow) {
-        showError(`R process exited with code ${code}. Check shiny_log.txt for details.`);
+        if (code === 127) {
+          showError(`R process exited with code ${code} (command not found). Make sure R is installed and in the PATH.`);
+        } else {
+          // Try to read the log file
+          let logMessage = "Check shiny_log.txt for details.";
+          const logPath = path.join(basePath, "shiny_log.txt");
+          if (fs.existsSync(logPath)) {
+            try {
+              const log = fs.readFileSync(logPath, 'utf8');
+              if (log) {
+                logMessage = log.substring(0, 500) + (log.length > 500 ? "... (truncated)" : "");
+              }
+            } catch (err) {
+              console.error("Error reading log file:", err);
+            }
+          }
+          showError(`R process exited with code ${code}.\n\n${logMessage}`);
+        }
       }
       rProcess = null;
     });

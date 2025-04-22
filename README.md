@@ -44,6 +44,45 @@ npm install
 
 ## Running the Application
 
+### Important Note for Packaged Application
+
+When running the packaged SandboxML application (DMG or ZIP), you need to ensure:
+
+1. **R is installed** on your system (download from [CRAN](https://cran.r-project.org/))
+2. **Required R packages are installed** using one of the following methods:
+
+#### Method 1: Using the Installer Script (Recommended)
+
+1. After installing SandboxML, open Terminal
+2. Navigate to the Resources folder inside the application:
+   ```bash
+   cd /Applications/SandboxML.app/Contents/Resources
+   ```
+3. Run the installer script:
+   ```bash
+   ./install_dependencies.sh
+   ```
+4. Once the dependencies are installed, you can use SandboxML
+
+#### Method 2: Manual Installation
+
+Open R and install the required packages:
+```r
+install.packages(c(
+  "shiny", "cluster", "factoextra", "dplyr", "shinyFiles", "ggplot2", "fs",
+  "DT", "markdown", "naniar", "missRanger", "readr", "gridExtra", "rlang",
+  "randomForest", "caret", "pROC", "shinyjs"
+))
+```
+
+### Troubleshooting Path Issues
+
+If you encounter an error about `R not found` or the app exits with code 127:
+
+1. Make sure R is installed
+2. Add R to your PATH environment variable
+3. Run the dependency installer script as described above
+
 ### Option 1: Using npm
 
 From the project root directory, run:
