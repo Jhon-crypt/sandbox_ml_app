@@ -294,10 +294,14 @@ rf_server <- function(input, output, session) {
       } else {  # regression block
         if (input$cv_method == "None") {
           # Use training data for predictions
-          preds <- predict(rf_model, newdata = rf_model$trainingData)
-          obs <- rf_model$trainingData$.outcome
+          pred_vals <- predict(rf_model, newdata = rf_model$trainingData)
+          obs_vals <- rf_model$trainingData$.outcome
           
-          fitnocv = lm(preds~obs)
+          # Store predictions and observations for plotting
+          predictions(data.frame(pred = pred_vals))
+          observations(obs_vals)
+          
+          fitnocv = lm(pred_vals~obs_vals)
           fitres = summary(fitnocv)
         
           cat("R squared:", round(fitres$r.squared,3), "\n")
@@ -306,15 +310,17 @@ rf_server <- function(input, output, session) {
         } else {
           preds <- rf_model$pred
           obs <- preds$obs
+          
+          # Store predictions and observations for plotting
+          predictions(data.frame(pred = preds$pred))
+          observations(obs)
+          
           adj_r2 <- 1 - (1 - rf_model$results$Rsquared) * ((length(obs) - 1) / (length(obs) - ncol(rf_model$trainingData) - 1))
           
           cat("R squared:", round(rf_model$results$Rsquared, 3), "\n")
           cat("Adjusted R squared:", round(adj_r2, 3), "\n")
         }
       }
-      
-      predictions(preds)
-      observations(obs)
       
     }) # end output rf_metrics
     
