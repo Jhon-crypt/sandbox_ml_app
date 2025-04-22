@@ -5,32 +5,75 @@ echo "SandboxML Dependency Installer"
 echo "==============================================="
 echo ""
 
-# Check if R is installed
-if command -v R >/dev/null 2>&1; then
-    R_VERSION=$(R --version | head -n 1)
-    echo "✓ $R_VERSION is installed."
+# Use SANDBOXML_R_PATH if available, otherwise default to system R
+if [ -n "$SANDBOXML_R_PATH" ]; then
+    echo "Using R from SANDBOXML_R_PATH: $SANDBOXML_R_PATH"
+    R_CMD="$SANDBOXML_R_PATH"
+    
+    # If path is to Rscript, convert to R for consistency
+    if [[ "$SANDBOXML_R_PATH" == *"Rscript"* ]]; then
+        R_CMD="${SANDBOXML_R_PATH%script}"
+    fi
+    
+    # Extract R_HOME from R path
+    R_HOME=$(dirname "$(dirname "$R_CMD")")
+    RSCRIPT_CMD="${R_CMD}script"
 else
-    echo "✗ R is not installed."
-    echo ""
-    echo "Please install R from https://cran.r-project.org/bin/macosx/"
-    echo "After installing R, run this script again."
-    exit 1
+    R_CMD="R"
+    RSCRIPT_CMD="Rscript"
 fi
 
-# Check if Rscript is in PATH
-if command -v Rscript >/dev/null 2>&1; then
-    echo "✓ Rscript is in PATH"
+echo "Using R command: $R_CMD"
+echo "Using Rscript command: $RSCRIPT_CMD"
+
+# Check if R is installed
+if command -v "$R_CMD" >/dev/null 2>&1; then
+    R_VERSION=$("$R_CMD" --version | head -n 1)
+    echo "✓ $R_VERSION is installed."
 else
-    echo "✗ Rscript is not in PATH"
+    echo "✗ R is not installed or not found at $R_CMD."
+    echo ""
+    
+    # Try common locations
+    for R_LOCATION in "/Library/Frameworks/R.framework/Resources/bin/R" "/usr/local/bin/R" "/usr/bin/R" "/opt/homebrew/bin/R"
+    do
+        if [ -f "$R_LOCATION" ]; then
+            echo "Found R at $R_LOCATION"
+            R_CMD="$R_LOCATION"
+            RSCRIPT_CMD="${R_CMD}script"
+            R_VERSION=$("$R_CMD" --version | head -n 1)
+            echo "✓ $R_VERSION is installed."
+            break
+        fi
+    done
+    
+    # If still not found
+    if ! command -v "$R_CMD" >/dev/null 2>&1; then
+        echo "Please install R from https://cran.r-project.org/bin/macosx/"
+        echo "After installing R, run this script again."
+        exit 1
+    fi
+fi
+
+# Check if Rscript is available
+if command -v "$RSCRIPT_CMD" >/dev/null 2>&1; then
+    echo "✓ Rscript is available at $RSCRIPT_CMD"
+else
+    echo "✗ Rscript is not found at $RSCRIPT_CMD"
     echo "Adding R to PATH for this session..."
     
     # Try to find R installation
-    R_HOME="/Library/Frameworks/R.framework/Resources"
-    export PATH="$R_HOME/bin:$PATH"
+    if [ -n "$R_HOME" ]; then
+        export PATH="$R_HOME/bin:$PATH"
+    else
+        R_HOME="/Library/Frameworks/R.framework/Resources"
+        export PATH="$R_HOME/bin:$PATH"
+    fi
     
     # Check again
     if command -v Rscript >/dev/null 2>&1; then
         echo "✓ Rscript is now available"
+        RSCRIPT_CMD="Rscript"
     else
         echo "✗ Failed to add Rscript to PATH"
         echo "Please make sure R is installed correctly."
@@ -43,8 +86,8 @@ echo "Installing required R packages..."
 echo "This may take several minutes."
 echo ""
 
-# Install all required packages
-Rscript - <<EOF
+# Install all required packages, using the specific R/Rscript found
+"$RSCRIPT_CMD" - <<EOF
 required_packages <- c(
   "shiny", "cluster", "factoextra", "dplyr", "shinyFiles", "ggplot2", "fs",
   "DT", "markdown", "naniar", "missRanger", "readr", "gridExtra", "rlang",

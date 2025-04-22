@@ -127,6 +127,75 @@ async function showRInstallDialog() {
   });
 }
 
+// Add a more robust R detection function
+function findROnMacOS() {
+  const possibleLocations = [
+    '/Library/Frameworks/R.framework/Resources/bin/R',
+    '/Library/Frameworks/R.framework/Resources/bin/Rscript',
+    '/usr/local/bin/R',
+    '/usr/local/bin/Rscript',
+    '/opt/homebrew/bin/R',
+    '/opt/homebrew/bin/Rscript',
+    '/opt/R/bin/R',
+    '/opt/local/bin/R'
+  ];
+  
+  // Try to execute R --version to detect installation
+  const shells = ['/bin/bash', '/bin/zsh', '/bin/sh'];
+  const paths = [
+    '/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin',
+    '/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin',
+    process.env.PATH || ''
+  ];
+  
+  console.log("Searching for R in multiple locations...");
+  
+  // Check each possible R location
+  for (const location of possibleLocations) {
+    try {
+      if (fs.existsSync(location)) {
+        console.log(`Found R at: ${location}`);
+        return location;
+      }
+    } catch (err) {
+      console.error(`Error checking ${location}:`, err);
+    }
+  }
+  
+  // Try to execute R with various shells and PATHs
+  for (const shell of shells) {
+    for (const path of paths) {
+      try {
+        console.log(`Trying to find R with shell ${shell} and PATH=${path}`);
+        const envWithPath = Object.assign({}, process.env, { PATH: path });
+        
+        // Try both with full path and relying on PATH
+        execSync(`${shell} -c "R --version"`, { env: envWithPath, stdio: 'pipe' });
+        console.log("Found R using shell execution");
+        return "R"; // Use the command name since we found it in PATH
+      } catch (err) {
+        // Silently continue to next attempt
+      }
+    }
+  }
+  
+  // Check if Rscript exists in common package manager locations
+  try {
+    const homebrewR = execSync('brew --prefix R 2>/dev/null || true').toString().trim();
+    if (homebrewR && fs.existsSync(path.join(homebrewR, 'bin/R'))) {
+      const rPath = path.join(homebrewR, 'bin/R');
+      console.log(`Found R installed via Homebrew at: ${rPath}`);
+      return rPath;
+    }
+  } catch (err) {
+    // Ignore error, Homebrew might not be installed
+  }
+  
+  console.log("Could not find R installation");
+  return null;
+}
+
+// Replace the checkAndInstallDependencies function's R detection part
 async function checkAndInstallDependencies() {
   return new Promise((resolve, reject) => {
     // Skip in development mode
@@ -154,14 +223,34 @@ async function checkAndInstallDependencies() {
       console.error("Error making installer script executable:", err);
     }
     
-    // Check if R is installed
+    // Check if R is installed - Use our improved detection for macOS
+    let rCommand = 'R';
+    let rFound = false;
+    
+    if (process.platform === 'darwin') {
+      const rPath = findROnMacOS();
+      if (rPath) {
+        rCommand = rPath;
+        rFound = true;
+      }
+    } else {
+      // For other platforms, just check if R is in PATH
+      try {
+        execSync('R --version');
+        rFound = true;
+      } catch (err) {
+        rFound = false;
+      }
+    }
+    
+    if (!rFound) {
+      console.error("R not found, prompting for installation");
+      return resolve('no-r');
+    }
+    
+    // R is found, continue with dependency check
     try {
-      execSync('which R');
-      console.log("R is installed.");
-      
-      // Run a simple R command to check if it works
-      execSync('R --version');
-      console.log("R is working.");
+      console.log("R is installed and working.");
       
       // Check if dependencies are installed
       const checkScript = `
@@ -175,7 +264,9 @@ async function checkAndInstallDependencies() {
       cat(length(missing))
       `;
       
-      const output = execSync(`R --vanilla -e "${checkScript}"`).toString().trim();
+      // Use rCommand to execute the script
+      const cmdPrefix = rCommand === 'R' ? 'R' : rCommand;
+      const output = execSync(`"${cmdPrefix}" --vanilla -e "${checkScript}"`).toString().trim();
       const missingCount = parseInt(output);
       
       if (missingCount === 0) {
@@ -246,10 +337,17 @@ async function checkAndInstallDependencies() {
       fs.writeFileSync(progressPath, progressHtml);
       installWindow.loadFile(progressPath);
       
+      // Modify the installer command to use the detected R path
+      const modifiedInstallerEnv = { 
+        ...process.env, 
+        SANDBOXML_R_PATH: rCommand 
+      };
+      
       // Run the installer
       const installer = spawn(installerPath, [], {
         shell: true,
-        stdio: 'pipe'
+        stdio: 'pipe',
+        env: modifiedInstallerEnv
       });
       
       let stdout = '';
@@ -289,12 +387,13 @@ async function checkAndInstallDependencies() {
       
     } catch (err) {
       console.error("Error checking R installation:", err);
-      // Instead of showing an error directly, show a dialog offering to download R
-      resolve('no-r'); // Special response to indicate R is not installed
+      // R was found but had an error running, might be a PATH issue
+      resolve('r-error');
     }
   });
 }
 
+// Update the startRProcess function to use our improved R detection
 function startRProcess() {
   // Get the correct path to the R script
   const isPackaged = app.isPackaged;
@@ -327,21 +426,39 @@ function startRProcess() {
   }
   
   // Check for R installation
+  let rFound = false;
+  
   if (process.platform === 'darwin') {
-    const rFrameworkPath = '/Library/Frameworks/R.framework';
-    if (!fs.existsSync(rFrameworkPath)) {
-      console.error('R Framework not found on the system');
-      showError('R is not installed on this system. Please install R from https://cran.r-project.org/bin/macosx/');
-      return false;
+    rFound = findROnMacOS() !== null;
+  } else {
+    // For other platforms
+    try {
+      execSync('R --version');
+      rFound = true;
+    } catch (err) {
+      rFound = false;
     }
+  }
+
+  if (!rFound) {
+    console.error('R not found on the system');
+    showError('R is not installed on this system. Please install R from https://cran.r-project.org/bin/macosx/');
+    return false;
   }
   
   // Spawn the R process
   try {
+    // Pass the detected R path as an environment variable
+    const rPath = process.platform === 'darwin' ? findROnMacOS() : 'R';
+    const env = Object.assign({}, process.env, {
+      SANDBOXML_R_PATH: rPath || 'R'
+    });
+    
     rProcess = spawn(scriptPath, [], {
       cwd: basePath, // Use the same base path for current working directory
       shell: true,
-      stdio: 'inherit' // log output directly to terminal for visibility
+      stdio: 'inherit', // log output directly to terminal for visibility
+      env: env
     });
     
     rProcess.on('error', (err) => {
