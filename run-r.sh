@@ -5,6 +5,29 @@ echo "Starting run-r.sh script"
 echo "Current directory: $(pwd)"
 echo "Script location: $0"
 
+# Function to cleanup on exit
+cleanup() {
+  echo "Cleaning up processes..."
+  
+  # Kill any process using port 3000
+  PID=$(lsof -ti:3000)
+  if [ -n "$PID" ]; then
+    echo "Killing process using port 3000: $PID"
+    kill -9 $PID || true
+  fi
+  
+  # Kill any R processes started by this script
+  if [ -n "$R_PID" ]; then
+    echo "Killing R process: $R_PID"
+    kill -9 $R_PID || true
+  fi
+  
+  echo "Cleanup complete"
+}
+
+# Set the cleanup function to run on script exit
+trap cleanup EXIT INT TERM
+
 # Kill anything using port 3000
 PID=$(lsof -ti:3000)
 if [ -n "$PID" ]; then
@@ -52,7 +75,11 @@ export R_HOME="$R_HOME"
 
 # --- Launch the app ---
 echo "Launching Shiny app..."
-"$RSCRIPT" -e "shiny::runApp('$SHINY_DIR', launch.browser=FALSE, port=3000)" > "$SCRIPT_DIR/shiny_log.txt" 2>&1
+"$RSCRIPT" -e "shiny::runApp('$SHINY_DIR', launch.browser=FALSE, port=3000)" > "$SCRIPT_DIR/shiny_log.txt" 2>&1 &
+R_PID=$!
+
+# Wait for R process to finish
+wait $R_PID
 
 # Check exit code
 EXIT_CODE=$?

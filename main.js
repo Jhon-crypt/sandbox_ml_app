@@ -50,6 +50,12 @@ function createWindow() {
 function showError(message) {
   if (mainWindow) {
     dialog.showErrorBox('SandboxML Error', message);
+    
+    // After showing an error, ensure we clean up properly
+    setTimeout(() => {
+      stopRProcess();
+      app.exit(1); // Force exit with error code
+    }, 5000); // Give user 5 seconds to read the error before force quitting
   } else {
     dialog.showErrorBox('SandboxML Error', message);
     app.quit();
@@ -147,12 +153,21 @@ function stopRProcess() {
   if (rProcess) {
     console.log("Stopping R process...");
     
-    if (process.platform === 'win32') {
-      // On Windows, we need to kill the process tree
-      spawn('taskkill', ['/pid', rProcess.pid, '/f', '/t']);
-    } else {
-      // On macOS/Linux, we can kill the process directly
-      rProcess.kill('SIGTERM');
+    // Kill any process using port 3000 (Shiny)
+    try {
+      if (process.platform === 'win32') {
+        // On Windows, we need to kill the process tree
+        spawn('taskkill', ['/pid', rProcess.pid, '/f', '/t']);
+        // Also try to kill any process on port 3000
+        spawn('cmd', ['/c', 'for /f "tokens=5" %p in (\'netstat -aon ^| findstr :3000\') do taskkill /F /PID %p']);
+      } else {
+        // On macOS/Linux, we can kill the process directly
+        rProcess.kill('SIGTERM');
+        // Also kill any process on port 3000
+        spawn('bash', ['-c', 'lsof -ti:3000 | xargs kill -9 || true']);
+      }
+    } catch (err) {
+      console.error("Error killing R process:", err);
     }
     
     rProcess = null;
@@ -179,8 +194,22 @@ app.on('window-all-closed', () => {
   app.quit();
 });
 
-app.on('will-quit', () => {
+app.on('before-quit', () => {
+  console.log("Application is quitting...");
   stopRProcess();
+});
+
+// Add a stronger quit handler for when app is force-quit
+process.on('SIGTERM', () => {
+  console.log("Received SIGTERM signal");
+  stopRProcess();
+  app.quit();
+});
+
+process.on('SIGINT', () => {
+  console.log("Received SIGINT signal");
+  stopRProcess();
+  app.quit();
 });
 
 // Handle macOS app activation
