@@ -1,6 +1,8 @@
 {
   "name": "SandboxML",
   "version": "1.0.0",
+  "description": "Machine learning application with Missing Data, Clustering, and Random Forest modeling",
+  "author": "Shelli Kesler",
   "main": "main.js",
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
@@ -12,10 +14,10 @@
     "check:r": "node build/checkR.js"
   },
   "dependencies": {
-    "electron": "^29.1.1"
   },
   "devDependencies": {
-    "electron-builder": "^24.13.3",
+    "electron": "^29.1.1",
+    "electron-builder": "^24.9.1",
     "electron-notarize": "^1.2.2"
   },
   "build": {
@@ -33,28 +35,25 @@
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
-      "extraFiles": [
-        {
-          "from": "/Library/Frameworks/R.framework",
-          "to": "Frameworks/R.framework",
-          "filter": [
-            "**/*"
-          ]
-        }
-      ]
+      "extraFiles": [{
+        "from": "/Library/Frameworks/R.framework",
+        "to": "Frameworks/R.framework",
+        "filter": [
+          "**/*"
+        ]
+      }]
     },
     "files": [
       "**/*",
       "!node_modules/electron/**/*",
-      "!build/temp/**/*"
+      "!build/temp/**/*",
+      "!dist/**/*",
+      "!**/*.md"
     ],
     "extraResources": [
       {
         "from": "shiny",
-        "to": "shiny",
-        "filter": [
-          "**/*"
-        ]
+        "to": "shiny"
       },
       "run-r.sh",
       "run-r.bat"

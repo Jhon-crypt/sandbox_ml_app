@@ -59,14 +59,17 @@ function showError(message) {
 function startRProcess() {
   // Get the correct path to the R script
   const isPackaged = app.isPackaged;
-  const appPath = isPackaged ? path.dirname(app.getPath('exe')) : app.getAppPath();
+  
+  // Use resourcesPath for packaged app, appPath for development
+  const basePath = isPackaged ? process.resourcesPath : app.getAppPath();
   
   // Choose the appropriate script based on platform
   const scriptName = process.platform === 'win32' ? 'run-r.bat' : 'run-r.sh';
-  const scriptPath = path.join(appPath, scriptName);
+  const scriptPath = path.join(basePath, scriptName);
   
   console.log(`Starting R process with script: ${scriptPath}`);
-  console.log(`Current directory: ${appPath}`);
+  console.log(`Current directory: ${basePath}`);
+  console.log(`App is packaged: ${isPackaged}`);
   
   // Check if the script exists
   if (!fs.existsSync(scriptPath)) {
@@ -87,7 +90,7 @@ function startRProcess() {
   // Spawn the R process
   try {
     rProcess = spawn(scriptPath, [], {
-      cwd: appPath,
+      cwd: basePath, // Use the same base path for current working directory
       shell: true,
       stdio: 'inherit' // log output directly to terminal for visibility
     });
