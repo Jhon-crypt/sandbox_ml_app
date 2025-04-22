@@ -5,68 +5,61 @@ SandboxML is a machine learning application built with R's Shiny framework and p
 ## Features
 
 - **Missing Data Handling**: Tools for visualizing and handling missing data in your datasets
-- **Clustering**: Implementations of clustering algorithms with visualization tools
-- **Random Forest**: Powerful Random Forest implementation for classification and prediction
+- **Clustering**: Implementations of K-means and K-medoids clustering algorithms with visualization tools
+- **Random Forest**: Powerful Random Forest implementation for classification and regression with performance metrics and visualizations
 
 ## System Requirements
 
-- Operating System: Windows, macOS, or Linux
-- R (version 4.0.0 or higher recommended)
-- Node.js and npm (for Electron)
+- Operating System: Windows 10/11 or macOS 10.15+ (Catalina or newer)
+- R (version 4.0.0 or higher required)
+- Node.js and npm (for development and packaging)
 
-## Installation
+## Installation & Setup
 
-### 1. Install R
+### For End Users (Using Pre-packaged Application)
 
-First, ensure R is installed on your system:
+#### macOS Installation
 
-- **Windows/macOS/Linux**: Download and install R from [CRAN](https://cran.r-project.org/)
+1. Download the SandboxML.dmg file
+2. Open the DMG file and drag SandboxML to your Applications folder
+3. **Important**: When first launching, right-click (or Ctrl+click) on the app and select "Open" to bypass Gatekeeper
+4. If R is not installed, the app will prompt you to install it or guide you to download it from [CRAN](https://cran.r-project.org/)
+5. The app will automatically install required R packages on first run
 
-### 2. Install Required R Packages
+#### Windows Installation
 
-Open R and run the following command to install all necessary packages:
+1. Download the SandboxML-Setup.exe file
+2. Run the installer and follow the prompts
+3. If R is not installed, the app will prompt you to install it or guide you to download it from [CRAN](https://cran.r-project.org/)
+4. The app will automatically install required R packages on first run
 
-```r
-install.packages(c(
-  "shiny", "cluster", "factoextra", "dplyr", "shinyFiles", "ggplot2", "fs",
-  "DT", "markdown", "naniar", "missRanger", "readr", "gridExtra", "rlang",
-  "randomForest", "caret", "pROC", "shinyjs"
-))
+### For Developers (Building from Source)
+
+#### 1. Install Dependencies
+
+First, ensure you have the necessary tools:
+
+- R (install from [CRAN](https://cran.r-project.org/))
+- Node.js & npm (install from [nodejs.org](https://nodejs.org/))
+- Git (for cloning the repository)
+
+#### 2. Clone the Repository
+
+```bash
+git clone https://github.com/yourusername/sandboxml.git
+cd sandboxml
 ```
 
-### 3. Install Node Dependencies
-
-In the root directory of the project, run:
+#### 3. Install Node Dependencies
 
 ```bash
 npm install
 ```
 
-## Running the Application
+#### 4. Install Required R Packages
 
-### Important Note for Packaged Application
+Open R and run:
 
-When running the packaged SandboxML application (DMG or ZIP), you need to ensure:
-
-1. **R is installed** on your system (download from [CRAN](https://cran.r-project.org/))
-2. **Required R packages are installed** using one of the following methods:
-
-#### Method 1: Using the Installer Script (Recommended)
-
-1. After installing SandboxML, open Terminal
-2. Navigate to the Resources folder inside the application:
-   ```bash
-   cd /Applications/SandboxML.app/Contents/Resources
-   ```
-3. Run the installer script:
-   ```bash
-   ./install_dependencies.sh
-   ```
-4. Once the dependencies are installed, you can use SandboxML
-
-#### Method 2: Manual Installation
-
-Open R and install the required packages:
 ```r
 install.packages(c(
   "shiny", "cluster", "factoextra", "dplyr", "shinyFiles", "ggplot2", "fs",
@@ -75,65 +68,117 @@ install.packages(c(
 ))
 ```
 
-### Troubleshooting Path Issues
+Alternatively, run the included script:
 
-If you encounter an error about `R not found` or the app exits with code 127:
+```bash
+# On macOS/Linux:
+chmod +x install_dependencies.sh
+./install_dependencies.sh
 
-1. Make sure R is installed
-2. Add R to your PATH environment variable
-3. Run the dependency installer script as described above
+# On Windows:
+.\install_dependencies.sh
+```
 
-### Option 1: Using npm
+## Running the Application
 
-From the project root directory, run:
+### For End Users
+
+Simply launch the installed application:
+
+- **macOS**: Open SandboxML from your Applications folder
+- **Windows**: Open SandboxML from the Start Menu or desktop shortcut
+
+### For Developers
+
+From the project root directory:
 
 ```bash
 npm start
 ```
 
-This will launch the Electron application which will automatically start the R Shiny server in the background.
+This launches the Electron application, which automatically starts the R Shiny server in the background.
 
-### Option 2: Running the Shiny App Directly
+## Usage Guide
 
-If you only want to run the Shiny application without Electron:
+1. **Missing Data Tab**
+   - Upload your CSV data file
+   - Visualize missing data patterns
+   - Choose from different imputation methods
+   - Export the cleaned dataset
 
-```bash
-R -e "shiny::runApp('shiny', launch.browser=TRUE, port=3000)"
-```
+2. **Clustering Tab**
+   - Upload your pre-processed data
+   - Choose clustering method (K-means or K-medoids)
+   - Select automatic or manual k selection
+   - Examine silhouette plots and cluster visualizations
 
-Then access the application in your web browser at http://localhost:3000
+3. **Random Forest Tab**
+   - Upload your dataset
+   - Select your outcome variable
+   - Choose between classification and regression
+   - Configure cross-validation and parameter selection
+   - View variable importance and model performance metrics
+   - Create plots to visualize results
+   - Save the trained model for later use
 
 ## Troubleshooting
 
-### Execution Permissions
+### Common Issues and Solutions
 
-If you're on macOS or Linux, you may need to make the run-r.sh script executable:
+| Issue | Solution |
+|-------|----------|
+| App does not start | Ensure R is installed and in PATH |
+| Missing package errors | Run the installer script again or manually install packages |
+| Port conflicts | Close other applications that might be using port 3000 |
+| Plot not showing | Try running the model again; check console for errors |
+| Data upload issues | Ensure your CSV file is properly formatted and has no special characters in headers |
+
+### Log Files
+
+Check these log files for troubleshooting:
+
+- `shiny_log.txt`: Contains output from the R Shiny process
+
+## Packaging for Distribution
+
+### Packaging for macOS
+
+1. Ensure you have all prerequisites installed
+2. Set up environment variables for notarization (if publishing to App Store):
+   ```bash
+   export APPLE_ID=your.apple.id@example.com
+   export APPLE_ID_PASSWORD=your-app-specific-password
+   ```
+3. Run the build command:
+   ```bash
+   # Without notarization:
+   npm run dist:mac
+   
+   # With notarization:
+   SKIP_NOTARIZE=false npm run dist:mac
+   ```
+4. Find the packaged app in the `dist` directory
+
+### Packaging for Windows
+
+1. Ensure you have all prerequisites installed
+2. Run the build command:
+   ```bash
+   npm run dist:win
+   ```
+3. Find the installer and portable versions in the `dist` directory
+
+### Universal Build Command
+
+For convenience, build for your current platform:
 
 ```bash
-chmod +x run-r.sh
+npm run build
 ```
 
-### Port Conflicts
+## Working with the Codebase
 
-If port 3000 is already in use, you can change the port in both:
-- `run-r.sh` (or `run-r.bat` for Windows)
-- `main.js` (update the port in the URL)
-
-### Missing Packages
-
-If you encounter errors about missing packages, you can install them individually:
-
-```r
-install.packages("package_name")
-```
-
-### Application Crash or Freeze
-
-1. Check the `shiny_log.txt` file for error messages
-2. Ensure all R packages are up to date
-3. Restart your computer and try again
-
-## Project Structure
+### Project Structure
 
 - `/shiny`: Contains the R Shiny application
   - `app.R`: Main entry point for the Shiny app
@@ -141,15 +186,36 @@ install.packages("package_name")
   - `shinyK_v2.R`: Clustering module
   - `shinyRF_v3.R`: Random Forest module
   - `*.Rmd`: Help documentation in R Markdown format
-- `main.js`: Electron main process
-- `run-r.sh`/`run-r.bat`: Scripts to launch the R Shiny server
+- `main.js`: Electron main process script
+- `run-r.sh`/`run-r.bat`: Platform-specific scripts to launch the R Shiny server
+- `install_dependencies.sh`: Script to install required R packages
+- `package.json`: Node.js project configuration
 
-## Stopping the Application
+### Important Notes for Contributing
 
-To stop the application:
+- When modifying the app, test both regression and classification models in the Random Forest module
+- Ensure cross-platform compatibility by testing on both macOS and Windows
+- Follow the code style and conventions in the existing modules
+- Test thoroughly with different data types and formats
 
-- Close the Electron window
-- Or terminate the process using Task Manager (Windows), Activity Monitor (macOS), or `pkill -f electron` (Linux/macOS)
+## Mac and Windows R Path Handling
+
+### macOS
+
+The app searches for R in these locations:
+1. Custom path from `SANDBOXML_R_PATH` environment variable
+2. Standard macOS R installation paths:
+   - `/Library/Frameworks/R.framework/Resources/bin/Rscript`
+   - `/usr/local/bin/Rscript`
+   - `/usr/bin/Rscript`
+
+### Windows
+
+The app searches for R in these locations:
+1. Custom path from `SANDBOXML_R_PATH` environment variable
+2. Program Files directories:
+   - `C:\Program Files\R\R-*\bin\Rscript.exe`
+   - `C:\Program Files\R\R-*\bin\x64\Rscript.exe`
 
 ## Credits
 
