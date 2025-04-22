@@ -1,0 +1,61 @@
+# R specific
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.Rapp.history
+.Renviron
+.Rprofile
+*-Ex.R
+/*.tar.gz
+/*.Rcheck/
+vignettes/*.html
+vignettes/*.pdf
+.httr-oauth
+*_cache/
+/cache/
+*.utf8.md
+*.knit.md
+.Rbuildignore
+
+# Shiny token, see https://shiny.rstudio.com/articles/shinyapps.html
+rsconnect/
+shiny_log.txt
+
+# Node specific
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+*.log
+logs
+*.pid
+*.seed
+*.pid.lock
+
+# Electron specific
+dist/
+out/
+.electron-build/
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE specific
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project specific
+.setup_done
+packagerCommand.txt
+~$*.docx
+~$*.xlsx
+~$*.pptx 
