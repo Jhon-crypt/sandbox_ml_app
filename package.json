@@ -4,9 +4,61 @@
   "main": "main.js",
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "build": "node build/build.js",
+    "check:r": "node build/checkR.js"
   },
   "dependencies": {
     "electron": "^29.1.1"
+  },
+  "devDependencies": {
+    "electron-builder": "^24.13.3",
+    "electron-notarize": "^1.2.2"
+  },
+  "build": {
+    "appId": "com.sandboxml.app",
+    "productName": "SandboxML",
+    "mac": {
+      "category": "public.app-category.education",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "icons/mac/icon.icns",
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extraFiles": [
+        {
+          "from": "/Library/Frameworks/R.framework",
+          "to": "Frameworks/R.framework",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
+    },
+    "files": [
+      "**/*",
+      "!node_modules/electron/**/*",
+      "!build/temp/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "shiny",
+        "to": "shiny",
+        "filter": [
+          "**/*"
+        ]
+      },
+      "run-r.sh",
+      "run-r.bat"
+    ],
+    "afterSign": "build/notarize.js"
   }
 }
