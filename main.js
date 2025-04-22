@@ -345,7 +345,7 @@ async function checkAndInstallDependencies() {
       
       // Run the installer
       const installer = spawn(installerPath, [], {
-        shell: true,
+    shell: true,
         stdio: 'pipe',
         env: modifiedInstallerEnv
       });
@@ -462,12 +462,12 @@ function startRProcess() {
     });
     
     rProcess.on('error', (err) => {
-      console.error("Error launching R process:", err);
+    console.error("Error launching R process:", err);
       showError(`Failed to start R: ${err.message}`);
-    });
-    
+  });
+
     rProcess.on('exit', (code) => {
-      console.log(`R process exited with code ${code}`);
+    console.log(`R process exited with code ${code}`);
       if (code !== 0 && mainWindow) {
         if (code === 127) {
           showError(`R process exited with code ${code} (command not found). Make sure R is installed and in the PATH.`);
@@ -540,7 +540,7 @@ app.whenReady().then(async () => {
     await showRInstallDialog();
     app.quit();
   } else if (dependenciesOk && startRProcess()) {
-    createWindow();
+  createWindow();
   } else if (!dependenciesOk) {
     showError("Failed to install dependencies. Please install manually using the instructions in the README.");
     app.quit();
